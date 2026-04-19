@@ -8,8 +8,11 @@ def test_output_shapes():
 
 def test_policy_sums_to_one():
     net = GoNetwork()
-    p, _ = net(torch.zeros(1, 17, 9, 9))
-    assert abs(p.sum().item() - 1.0) < 1e-4
+    net.eval()
+    with torch.no_grad():
+        p, _ = net(torch.zeros(1, 17, 9, 9))
+    p_prob = torch.softmax(p, dim=1)
+    assert abs(p_prob.sum().item() - 1.0) < 1e-4
 
 def test_value_in_range():
     net = GoNetwork()

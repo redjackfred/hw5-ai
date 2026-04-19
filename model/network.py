@@ -37,8 +37,9 @@ class GoNetwork(nn.Module):
             nn.Linear(81, 256), nn.ReLU(), nn.Linear(256, 1), nn.Tanh())
 
     def forward(self, x):
+        """Returns (policy_logits, value). Apply softmax to policy at inference time."""
         x = self.tower(self.stem(x))
-        p = F.softmax(self.pol_fc(self.pol_conv(x).flatten(1)), dim=1)
+        p = self.pol_fc(self.pol_conv(x).flatten(1))   # raw logits — use cross_entropy in training
         v = self.val_fc(self.val_conv(x).flatten(1))
         return p, v
 
