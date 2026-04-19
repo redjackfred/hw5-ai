@@ -12,10 +12,10 @@ def _flood_territory(grid, visited, r, c):
         row, col = stack.pop()
         if (row, col) in visited:
             continue
-        visited.add((row, col))
         if grid[row, col] != EMPTY:
             bordering.add(int(grid[row, col]))
-            continue
+            continue  # stone cells not added to visited — they can border multiple regions
+        visited.add((row, col))
         cells.append((row, col))
         for dr, dc in NEIGHBORS:
             nr, nc = row+dr, col+dc
