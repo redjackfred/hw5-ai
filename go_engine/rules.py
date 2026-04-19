@@ -1,10 +1,11 @@
 from go_engine.board import Board, EMPTY, BLACK, WHITE
 
+BOARD_SIZE = 9
 NEIGHBORS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
 
 def _in_bounds(r, c):
-    return 0 <= r < 9 and 0 <= c < 9
+    return 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE
 
 
 def get_group(board: Board, row: int, col: int) -> set:
