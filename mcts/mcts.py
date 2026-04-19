@@ -54,11 +54,11 @@ class MCTS:
             g = _copy_game(node.game); g.play(r, c)
             node.children[(r, c)] = MCTSNode(g, node, float(policy[r * 9 + c]))
 
-    def _backup(self, node, value, root_player):
+    def _backup(self, node, value):
         while node is not None:
             node.visit_count += 1
-            sign = 1.0 if node.game.current_player == root_player else -1.0
-            node.value_sum += sign * value
+            node.value_sum += value
+            value = -value
             node = node.parent
 
     def select_move(self, game, temperature=0.0):
@@ -66,7 +66,6 @@ class MCTS:
         pol, _ = self._infer(root.game)
         self._expand(root, pol)
         self._add_noise(root)
-        root_player = game.current_player
 
         t0 = time.time()
         for _ in range(self.num_simulations):
@@ -74,11 +73,13 @@ class MCTS:
                 break
             leaf = self._select(root)
             if leaf.game.is_over() or not leaf.game.get_legal_moves():
-                self._backup(leaf, 0.0, root_player); continue
+                self._backup(leaf, 0.0); continue
             p, v = self._infer(leaf.game)
             self._expand(leaf, p)
-            self._backup(leaf, v, root_player)
+            self._backup(leaf, v)
 
+        if not root.children:
+            raise RuntimeError("No legal moves available")
         moves = list(root.children.keys())
         counts = np.array([root.children[m].visit_count for m in moves], dtype=np.float32)
         if temperature == 0.0:
