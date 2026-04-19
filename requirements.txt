@@ -1,0 +1,5 @@
+torch>=2.2.0
+numpy>=1.26
+pygame>=2.5
+sgfmill>=1.1
+pytest>=8.0
