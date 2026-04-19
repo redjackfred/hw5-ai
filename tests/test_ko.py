@@ -99,6 +99,9 @@ def test_legal_moves_excludes_occupied():
 def test_pass_turn_records_history():
     g = Game()
     g.pass_turn()
-    assert g.is_over() is True
     assert g.move_history[-1] == (None, None, BLACK)
     assert g.current_player == WHITE
+    # Single pass does not end the game; two consecutive passes do
+    assert g.is_over() is False
+    g.pass_turn()
+    assert g.is_over() is True

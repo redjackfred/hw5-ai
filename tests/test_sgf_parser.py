@@ -48,7 +48,17 @@ def test_sample_shapes(tmp_path):
     feat, pol, val = result[0]
     assert feat.shape == (17, 9, 9), f"Expected feat shape (17,9,9), got {feat.shape}"
     assert pol.shape == (82,), f"Expected pol shape (82,), got {pol.shape}"
-    assert val in (-1.0, 1.0), f"Expected val in {{-1.0, 1.0}}, got {val}"
+    assert val == 1.0, f"Expected val == 1.0 (Black move, Black wins), got {val}"
+
+
+def test_pass_move_does_not_corrupt_subsequent_samples(tmp_path):
+    # Black at (4,4), White pass, Black at (3,3), Black wins
+    sgf = b"(;GM[1]FF[4]SZ[9]RE[B+1.5];B[ee];W[];B[dd])"
+    path = write_sgf(str(tmp_path), sgf)
+    result = parse_sgf_file(path)
+    assert len(result) == 2, f"Expected 2 samples (real moves only), got {len(result)}"
+    for i, (feat, pol, val) in enumerate(result):
+        assert val == 1.0, f"Sample {i}: expected val == 1.0 (Black wins), got {val}"
 
 
 def test_load_dataset_no_files_raises(tmp_path):

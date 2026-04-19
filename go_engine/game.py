@@ -53,9 +53,15 @@ class Game:
         return [(r, c) for r in range(9) for c in range(9) if self.is_legal(r, c)]
 
     def pass_turn(self) -> None:
+        # Two consecutive passes end the game
+        last_was_pass = (
+            len(self.move_history) > 0
+            and self.move_history[-1][0] is None
+        )
         self.move_history.append((None, None, self._current_player))
         self._current_player = WHITE if self._current_player == BLACK else BLACK
-        self._game_over = True
+        if last_was_pass:
+            self._game_over = True
 
     def is_over(self) -> bool:
         return self._game_over

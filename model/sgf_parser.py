@@ -26,7 +26,10 @@ def parse_sgf_file(path: str) -> list:
     game = Game()
     for node in game_tree.get_main_sequence()[1:]:
         color, move = node.get_move()
-        if color is None or move is None:
+        if color is None:
+            continue
+        if move is None:
+            game.pass_turn()
             continue
         row, col = move
         if game.current_player != _color_int(color) or not game.is_legal(row, col):
@@ -34,6 +37,7 @@ def parse_sgf_file(path: str) -> list:
 
         feat = encode_board(game)
         pol = np.zeros(82, dtype=np.float32)
+        assert 0 <= row < 9 and 0 <= col < 9
         pol[row * 9 + col] = 1.0
         val = np.float32(1.0 if (winner == "b") == (game.current_player == BLACK) else -1.0)
         samples.append((feat, pol, val))
