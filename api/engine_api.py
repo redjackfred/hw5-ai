@@ -1,4 +1,5 @@
 import numpy as np
+from go_engine.board import BLACK, WHITE
 from go_engine.game import Game
 from go_engine.scorer import compute_score, determine_winner
 
@@ -26,8 +27,8 @@ class GoEngine:
     def get_score(self) -> tuple:
         return compute_score(
             self.game.board,
-            self.game.captured.get(1, 0),
-            self.game.captured.get(2, 0),
+            self.game.captured.get(BLACK, 0),
+            self.game.captured.get(WHITE, 0),
         )
 
     def is_game_over(self) -> bool:

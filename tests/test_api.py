@@ -37,3 +37,18 @@ def test_not_over_initially():
 def test_winner_returns_string():
     e = GoEngine(); e.new_game()
     assert e.get_winner() in ("black", "white")
+
+def test_get_ai_move_no_ai_raises():
+    e = GoEngine(); e.new_game()
+    import pytest
+    with pytest.raises(RuntimeError):
+        e.get_ai_move()
+
+def test_get_ai_move_with_stub_ai():
+    e = GoEngine(); e.new_game()
+    class StubAI:
+        def select_move(self, game):
+            return (4, 4)
+    e.set_ai(StubAI())
+    move = e.get_ai_move()
+    assert move == (4, 4)
