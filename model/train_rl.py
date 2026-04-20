@@ -23,13 +23,15 @@ BATCH = 256
 STEPS_PER_ITER = 50
 
 
-def play_game(mcts: MCTS) -> list:
+def play_game(black_mcts: MCTS, white_mcts: MCTS) -> list:
+    """Play one game with potentially different networks for black and white."""
     game, traj, move_n = Game(), [], 0
     while not game.is_over() and game.get_legal_moves():
         tau = 1.0 if move_n < 30 else 0.0
         feat = encode_board(game)
         player = game.current_player
-        move = mcts.select_move(game, temperature=tau)  # no resign during training
+        m = black_mcts if player == BLACK else white_mcts
+        move = m.select_move(game, temperature=tau)  # no resign during training
         pol = np.zeros(82, dtype=np.float32)
         pol[move[0] * 9 + move[1]] = 1.0
         traj.append((feat, pol, player))
@@ -81,13 +83,18 @@ def train(sl_ckpt, output, iters=50):
     torch.save(best.state_dict(), output)
     buf = deque(maxlen=BUFFER)
     opt = torch.optim.Adam(net.parameters(), lr=1e-4, weight_decay=1e-4)
-    train_mcts = MCTS(best, SIM_TRAIN, 60.0)
 
     for it in range(1, iters + 1):
         print(f"\n=== Iter {it}/{iters} ===")
         net.eval()
+        # net vs best: alternate colors each game so both sides are covered
+        net_mcts = MCTS(net, SIM_TRAIN, 60.0)
+        best_mcts = MCTS(best, SIM_TRAIN, 60.0)
         for gi in range(20):
-            buf.extend(play_game(train_mcts))
+            if gi % 2 == 0:
+                buf.extend(play_game(net_mcts, best_mcts))   # net=Black, best=White
+            else:
+                buf.extend(play_game(best_mcts, net_mcts))   # best=Black, net=White
             if (gi + 1) % 5 == 0:
                 print(f"  self-play {gi+1}/20  buf={len(buf)}")
         if len(buf) < BATCH:
