@@ -1,7 +1,46 @@
 """
-python main.py                            # Human (Black) vs AI (White)
-python main.py --ai-vs-ai                 # AI vs AI demo
-python main.py --checkpoint path/to.pt   # custom checkpoint
+USF CS 486 / CS 686 — Homework 5: 9x9 Go Engine
+================================================
+
+AI Strategy
+-----------
+This engine uses an AlphaGo-style approach: supervised learning (SL) pretraining
+on real game records, followed by Monte Carlo Tree Search (MCTS) at inference time.
+
+The core model is a dual-head residual network (10 blocks, 256 channels, ~5M params).
+Given a board encoded as a 17-plane tensor (8 history planes per color + turn indicator),
+it outputs:
+  - Policy head: 82 logits (81 board moves + pass) — where a strong player would move
+  - Value head: scalar in (-1, 1) — who is winning
+
+At inference, MCTS (up to 1600 simulations, 3-second budget) uses these outputs:
+  - PUCT selection balances Q-value (exploitation) and policy prior (exploration)
+  - New nodes are initialized with the network's policy as prior probabilities
+  - Dirichlet noise at the root encourages move diversity
+  - Negamax backup propagates value estimates up the tree
+  - Final move = child with highest visit count (greedy, temperature=0)
+
+The AI resigns if the MCTS root Q-value drops below -0.6 (~20% win probability).
+
+Design Decisions & Challenges
+------------------------------
+- Ko detection uses incremental Zobrist hashing (O(1) per move), not coordinate guards,
+  which would fail for snapback positions.
+- Flood-fill territory scoring keeps stone cells out of the visited set so a stone
+  bordering two regions is not consumed by the first fill.
+- The network returns raw logits; softmax is applied only at inference. Using softmax
+  inside forward() with F.cross_entropy compresses gradients and breaks training.
+- MCTS backup uses negamax (negate at each step) so every node's Q is from its own
+  player's perspective; a fixed-sign approach breaks minimax at opponent nodes.
+- Two consecutive passes end the game; a single pass only alternates the player.
+
+Testing Beyond the Provided Suite
+-----------------------------------
+Tested: parsing 37k real SGF files, running MCTS on empty boards, complete GUI games,
+Ko snapback detection, flood-fill edge cases, and resign logic in both directions.
+
+Run: python main.py --checkpoint checkpoints/sl_best.pt
+     python main.py --checkpoint checkpoints/sl_best.pt --ai-vs-ai
 """
 import argparse, os, threading
 import torch, pygame
