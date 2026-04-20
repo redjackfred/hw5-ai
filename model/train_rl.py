@@ -20,7 +20,7 @@ EVAL_GAMES = 10
 WIN_THRESH = 0.45
 RESIGN_THRESH = -0.6  # Q < -0.6 (~20% win prob) → resign in self-play
 BATCH = 256
-STEPS_PER_ITER = 200
+STEPS_PER_ITER = 50
 
 
 def play_game(mcts: MCTS) -> list:
@@ -29,12 +29,7 @@ def play_game(mcts: MCTS) -> list:
         tau = 1.0 if move_n < 30 else 0.0
         feat = encode_board(game)
         player = game.current_player
-        move = mcts.select_move(game, temperature=tau, resign_threshold=RESIGN_THRESH)
-        if move is None:  # resigned
-            resigned_color = game.current_player
-            winner = "black" if resigned_color == WHITE else "white"
-            return [(f, p, np.float32(1.0 if (winner == "black") == (pl == BLACK) else -1.0))
-                    for f, p, pl in traj]
+        move = mcts.select_move(game, temperature=tau)  # no resign during training
         pol = np.zeros(82, dtype=np.float32)
         pol[move[0] * 9 + move[1]] = 1.0
         traj.append((feat, pol, player))
