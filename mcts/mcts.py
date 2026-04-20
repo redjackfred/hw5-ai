@@ -61,7 +61,12 @@ class MCTS:
             value = -value
             node = node.parent
 
-    def select_move(self, game, temperature=0.0):
+    def select_move(self, game, temperature=0.0, resign_threshold=None):
+        """Returns (row, col) or None if AI resigns.
+
+        resign_threshold: if set, resign when MCTS Q value < threshold.
+        win_prob = (Q + 1) / 2, so threshold=-0.6 means ~20% win probability.
+        """
         root = MCTSNode(_copy_game(game), None, 1.0)
         pol, _ = self._infer(root.game)
         self._expand(root, pol)
@@ -80,6 +85,10 @@ class MCTS:
 
         if not root.children:
             raise RuntimeError("No legal moves available")
+
+        if resign_threshold is not None and root.q_value() < resign_threshold:
+            return None  # resign signal
+
         moves = list(root.children.keys())
         counts = np.array([root.children[m].visit_count for m in moves], dtype=np.float32)
         if temperature == 0.0:
