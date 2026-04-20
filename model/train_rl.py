@@ -13,11 +13,12 @@ from go_engine.scorer import compute_score, determine_winner
 
 os.makedirs("checkpoints", exist_ok=True)
 
-BUFFER = 500_000
-SIM_TRAIN = 200
-SIM_EVAL = 400
-EVAL_GAMES = 20
-WIN_THRESH = 0.55
+BUFFER = 100_000
+SIM_TRAIN = 50
+SIM_EVAL = 100
+EVAL_GAMES = 10
+WIN_THRESH = 0.45
+RESIGN_THRESH = -0.6  # Q < -0.6 (~20% win prob) → resign in self-play
 BATCH = 256
 STEPS_PER_ITER = 200
 
@@ -28,7 +29,12 @@ def play_game(mcts: MCTS) -> list:
         tau = 1.0 if move_n < 30 else 0.0
         feat = encode_board(game)
         player = game.current_player
-        move = mcts.select_move(game, temperature=tau)
+        move = mcts.select_move(game, temperature=tau, resign_threshold=RESIGN_THRESH)
+        if move is None:  # resigned
+            resigned_color = game.current_player
+            winner = "black" if resigned_color == WHITE else "white"
+            return [(f, p, np.float32(1.0 if (winner == "black") == (pl == BLACK) else -1.0))
+                    for f, p, pl in traj]
         pol = np.zeros(82, dtype=np.float32)
         pol[move[0] * 9 + move[1]] = 1.0
         traj.append((feat, pol, player))
@@ -51,12 +57,20 @@ def evaluate(cur_net, best_net, device) -> float:
         cm_color = BLACK if cur_is_black else WHITE
         bm_color = WHITE if cur_is_black else BLACK
         move_n = 0
+        resigned_winner = None
         while not game.is_over() and game.get_legal_moves() and move_n < 200:
             m = cm if game.current_player == cm_color else bm
-            game.play(*m.select_move(game, 0.0))
+            move = m.select_move(game, 0.0, resign_threshold=RESIGN_THRESH)
+            if move is None:
+                resigned_winner = "black" if game.current_player == WHITE else "white"
+                break
+            game.play(*move)
             move_n += 1
-        bs, ws = compute_score(game.board, game.captured.get(BLACK, 0), game.captured.get(WHITE, 0))
-        w = determine_winner(bs, ws)
+        if resigned_winner:
+            w = resigned_winner
+        else:
+            bs, ws = compute_score(game.board, game.captured.get(BLACK, 0), game.captured.get(WHITE, 0))
+            w = determine_winner(bs, ws)
         if (w == "black") == cur_is_black:
             wins += 1
     return wins / EVAL_GAMES
@@ -77,10 +91,10 @@ def train(sl_ckpt, output, iters=50):
     for it in range(1, iters + 1):
         print(f"\n=== Iter {it}/{iters} ===")
         net.eval()
-        for gi in range(100):
+        for gi in range(20):
             buf.extend(play_game(train_mcts))
-            if (gi + 1) % 20 == 0:
-                print(f"  self-play {gi+1}/100  buf={len(buf)}")
+            if (gi + 1) % 5 == 0:
+                print(f"  self-play {gi+1}/20  buf={len(buf)}")
         if len(buf) < BATCH:
             continue
         net.train()
