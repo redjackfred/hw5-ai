@@ -34,7 +34,9 @@ def play_game(mcts: MCTS) -> list:
         tau = 1.0 if move_n < 30 else 0.0
         feat = encode_board(game)
         player = game.current_player
-        move = mcts.select_move(game, temperature=tau, resign_threshold=RESIGN_THRESH_TRAIN)
+        # Only allow resign after 20 moves — early Q values are unreliable with few sims
+        thresh = RESIGN_THRESH_TRAIN if move_n >= 20 else None
+        move = mcts.select_move(game, temperature=tau, resign_threshold=thresh)
         if move is None:
             resigned_color = game.current_player
             winner = "black" if resigned_color == WHITE else "white"
