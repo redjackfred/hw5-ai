@@ -18,7 +18,8 @@ SIM_TRAIN = 999
 TIME_TRAIN = 0.1    # 0.1s per move in self-play
 SIM_EVAL = 999
 TIME_EVAL = 1.0     # 1s per move in evaluation vs SL baseline
-GAMES_PER_ITER = 100
+GAMES_PER_ITER = 40
+MAX_MOVES = 150     # cap game length to prevent runaway games
 EVAL_GAMES = 10
 RESIGN_THRESH = -0.6
 BATCH = 256
@@ -28,7 +29,7 @@ STEPS_PER_ITER = 100
 def play_game(mcts: MCTS) -> list:
     """Pure self-play: same network plays both Black and White."""
     game, traj, move_n = Game(), [], 0
-    while not game.is_over() and game.get_legal_moves():
+    while not game.is_over() and game.get_legal_moves() and move_n < MAX_MOVES:
         tau = 1.0 if move_n < 30 else 0.0
         feat = encode_board(game)
         player = game.current_player
