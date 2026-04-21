@@ -21,7 +21,8 @@ TIME_EVAL = 1.0     # 1s per move in evaluation vs SL baseline
 GAMES_PER_ITER = 40
 MAX_MOVES = 150     # cap game length to prevent runaway games
 EVAL_GAMES = 10
-RESIGN_THRESH = -0.6
+RESIGN_THRESH = -0.6        # for evaluation vs SL
+RESIGN_THRESH_TRAIN = -0.8  # ~10% win prob — resign in self-play to cut short hopeless games
 BATCH = 256
 STEPS_PER_ITER = 100
 
@@ -33,7 +34,12 @@ def play_game(mcts: MCTS) -> list:
         tau = 1.0 if move_n < 30 else 0.0
         feat = encode_board(game)
         player = game.current_player
-        move = mcts.select_move(game, temperature=tau)
+        move = mcts.select_move(game, temperature=tau, resign_threshold=RESIGN_THRESH_TRAIN)
+        if move is None:
+            resigned_color = game.current_player
+            winner = "black" if resigned_color == WHITE else "white"
+            return [(f, p, np.float32(1.0 if (winner == "black") == (pl == BLACK) else -1.0))
+                    for f, p, pl in traj]
         pol = np.zeros(82, dtype=np.float32)
         pol[move[0] * 9 + move[1]] = 1.0
         traj.append((feat, pol, player))
