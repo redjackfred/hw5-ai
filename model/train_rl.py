@@ -99,8 +99,8 @@ def train(sl_ckpt, output, iters=50):
         mcts = MCTS(net, SIM_TRAIN, TIME_TRAIN)
         for gi in range(GAMES_PER_ITER):
             buf.extend(play_game(mcts))
-            if (gi + 1) % 20 == 0:
-                print(f"  self-play {gi+1}/{GAMES_PER_ITER}  buf={len(buf)}")
+            if (gi + 1) % 5 == 0:
+                print(f"  self-play {gi+1}/{GAMES_PER_ITER}  buf={len(buf)}", flush=True)
 
         if len(buf) < BATCH:
             continue
