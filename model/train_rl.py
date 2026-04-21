@@ -15,7 +15,7 @@ os.makedirs("checkpoints", exist_ok=True)
 
 BUFFER = 200_000
 SIM_TRAIN = 999
-TIME_TRAIN = 0.1    # 0.1s per move in self-play
+TIME_TRAIN = 0.05   # 0.05s per move in self-play
 SIM_EVAL = 999
 TIME_EVAL = 1.0     # 1s per move in evaluation vs SL baseline
 GAMES_PER_ITER = 40
@@ -100,11 +100,15 @@ def train(sl_ckpt, output, iters=50):
         net.eval()
         mcts = MCTS(net, SIM_TRAIN, TIME_TRAIN)
         t_sp = time.time()
+        total_moves = 0
         for gi in range(GAMES_PER_ITER):
-            buf.extend(play_game(mcts))
+            samples = play_game(mcts)
+            total_moves += len(samples)
+            buf.extend(samples)
             if (gi + 1) % 5 == 0:
                 elapsed = time.time() - t_sp
-                print(f"  self-play {gi+1}/{GAMES_PER_ITER}  buf={len(buf)}  {elapsed:.0f}s", flush=True)
+                avg_moves = total_moves / (gi + 1)
+                print(f"  self-play {gi+1}/{GAMES_PER_ITER}  buf={len(buf)}  {elapsed:.0f}s  avg={avg_moves:.0f}moves/game", flush=True)
 
         if len(buf) < BATCH:
             continue
