@@ -13,14 +13,17 @@ from go_engine.scorer import compute_score, determine_winner
 
 os.makedirs("checkpoints", exist_ok=True)
 
-BUFFER = 100_000
-SIM_TRAIN = 50
-SIM_EVAL = 100
+BUFFER = 200_000
+SIM_TRAIN = 999     # effectively unlimited — time_limit drives termination
+TIME_TRAIN = 0.1    # 0.1s per move in self-play (~20-40 sims on M4 Pro)
+SIM_EVAL = 999
+TIME_EVAL = 0.5     # 0.5s per move in evaluation (higher quality)
+GAMES_PER_ITER = 100
 EVAL_GAMES = 10
 WIN_THRESH = 0.45
-RESIGN_THRESH = -0.6  # Q < -0.6 (~20% win prob) → resign in self-play
+RESIGN_THRESH = -0.6
 BATCH = 256
-STEPS_PER_ITER = 50
+STEPS_PER_ITER = 100
 
 
 def play_game(black_mcts: MCTS, white_mcts: MCTS) -> list:
@@ -45,8 +48,8 @@ def play_game(black_mcts: MCTS, white_mcts: MCTS) -> list:
 
 def evaluate(cur_net, best_net, device) -> float:
     cur_net.eval(); best_net.eval()
-    cm = MCTS(cur_net, SIM_EVAL, 10.0)
-    bm = MCTS(best_net, SIM_EVAL, 10.0)
+    cm = MCTS(cur_net, SIM_EVAL, TIME_EVAL)
+    bm = MCTS(best_net, SIM_EVAL, TIME_EVAL)
     wins = 0
     for i in range(EVAL_GAMES):
         game = Game()
@@ -88,15 +91,15 @@ def train(sl_ckpt, output, iters=50):
         print(f"\n=== Iter {it}/{iters} ===")
         net.eval()
         # net vs best: alternate colors each game so both sides are covered
-        net_mcts = MCTS(net, SIM_TRAIN, 60.0)
-        best_mcts = MCTS(best, SIM_TRAIN, 60.0)
-        for gi in range(20):
+        net_mcts = MCTS(net, SIM_TRAIN, TIME_TRAIN)
+        best_mcts = MCTS(best, SIM_TRAIN, TIME_TRAIN)
+        for gi in range(GAMES_PER_ITER):
             if gi % 2 == 0:
                 buf.extend(play_game(net_mcts, best_mcts))   # net=Black, best=White
             else:
                 buf.extend(play_game(best_mcts, net_mcts))   # best=Black, net=White
-            if (gi + 1) % 5 == 0:
-                print(f"  self-play {gi+1}/20  buf={len(buf)}")
+            if (gi + 1) % 20 == 0:
+                print(f"  self-play {gi+1}/{GAMES_PER_ITER}  buf={len(buf)}")
         if len(buf) < BATCH:
             continue
         net.train()
