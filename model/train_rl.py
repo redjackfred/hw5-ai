@@ -1,5 +1,5 @@
 """Run: python -m model.train_rl --sl-checkpoint checkpoints/sl_best.pt"""
-import argparse, os, random
+import argparse, os, random, time
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -92,15 +92,18 @@ def train(sl_ckpt, output, iters=50):
     best_wr = 0.0
 
     for it in range(1, iters + 1):
+        t_iter = time.time()
         print(f"\n=== Iter {it}/{iters} ===")
 
         # --- Self-play: net vs itself ---
         net.eval()
         mcts = MCTS(net, SIM_TRAIN, TIME_TRAIN)
+        t_sp = time.time()
         for gi in range(GAMES_PER_ITER):
             buf.extend(play_game(mcts))
             if (gi + 1) % 5 == 0:
-                print(f"  self-play {gi+1}/{GAMES_PER_ITER}  buf={len(buf)}", flush=True)
+                elapsed = time.time() - t_sp
+                print(f"  self-play {gi+1}/{GAMES_PER_ITER}  buf={len(buf)}  {elapsed:.0f}s", flush=True)
 
         if len(buf) < BATCH:
             continue
@@ -125,7 +128,8 @@ def train(sl_ckpt, output, iters=50):
             total_loss += loss.item()
 
         avg_loss = total_loss / STEPS_PER_ITER
-        print(f"  loss={avg_loss:.4f}")
+        iter_time = time.time() - t_iter
+        print(f"  loss={avg_loss:.4f}  iter_time={iter_time:.0f}s")
 
         # --- Always save latest checkpoint ---
         torch.save(net.state_dict(), output)
